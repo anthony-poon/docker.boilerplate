@@ -1,0 +1,11 @@
+{
+    "name": "anthony-poon.com/docker-boilerplate",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Anthony Poon",
+            "email": "ypoon196@gmail.com"
+        }
+    ],
+    "require": {}
+}

@@ -1,41 +1,22 @@
-FROM composer2.0.7 as build
+FROM composer as build
 
-FROM php7.3-apache
+WORKDIR /opt/workspace
+COPY ./composer.json /opt/workspace
+COPY ./composer.lock /opt/workspace
+RUN composer install
+
+FROM php:7.4-apache
 ARG BUILD_ENV
-RUN apt-get update -y
-RUN apt-get install -y git unzip lftp gnupg curl wget libcurl4-openssl-dev libpng-dev libfreetype6-dev libjpeg-dev libjpeg62-turbo-dev zlib1g-dev libpq-dev libxml2-dev libzip-dev libgmp-dev
-RUN docker-php-ext-install curl
-RUN docker-php-ext-install pgsql
-RUN docker-php-ext-install soap
-RUN docker-php-ext-install mysqli
-RUN docker-php-ext-install bcmath
-RUN docker-php-ext-install xml
-RUN docker-php-ext-install gmp
-RUN docker-php-ext-install zip
-RUN docker-php-ext-install json
-RUN if [ $HTTP_PROXY ] ; then pear config-set http_proxy $HTTP_PROXY; fi
-RUN pecl install -o -f redis &&  rm -rf tmppear &&  docker-php-ext-enable redis
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public_html
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
 # only install and activate xdebug on local docker build
-RUN if [ $BUILD_ENV = local ] ; then pecl install -o -f xdebug &&  rm -rf tmppear; docker-php-ext-enable xdebug; fi
-
-RUN docker-php-ext-configure gd --with-png-dir=usrinclude --with-jpeg-dir=usrinclude --with-freetype-dir=usrinclude
-RUN docker-php-ext-install gd
-
+RUN if [ $BUILD_ENV = dev ] ; then pecl install -o -f xdebug &&  rm -rf tmppear; docker-php-ext-enable xdebug; fi
 # on local docker build use the development php.ini, otherwise use the production version of the image
-RUN if [ $BUILD_ENV = local ] ; then mv $PHP_INI_DIRphp.ini-development $PHP_INI_DIRphp.ini;  else mv $PHP_INI_DIRphp.ini-production $PHP_INI_DIRphp.ini; fi
-RUN sed -i 'spgsql.auto_reset_persistent = Offpgsql.auto_reset_persistent = Ong' $PHP_INI_DIRphp.ini
+RUN if [ $BUILD_ENV = dev ] ; then mv $PHP_INI_DIR/php.ini-development $PHP_INI_DIR/php.ini;  else mv $PHP_INI_DIR/php.ini-production $PHP_INI_DIR/php.ini; fi
 RUN a2enmod rewrite
 
-RUN mkdir -p tmptemp
-RUN chmod 777 tmptemp
-RUN mkdir -p tmpcache
-RUN chmod 777 tmpcache
-RUN mkdir -p tmptemplates_c
-RUN chmod 777 tmptemplates_c
+WORKDIR /var/www/html/
+COPY --from=build /opt/workspace/vendor /var/www/html/vendor
 
-COPY --from=build usrbincomposer usrbincomposer
-COPY . varwww
-WORKDIR varwww
-RUN sed -i 's80${PORT}g' etcapache2sites-available000-default.conf etcapache2ports.conf
-
-RUN composer install

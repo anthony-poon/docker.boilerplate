@@ -1,14 +1,15 @@
 version: '3'
 services:
-  app:
-    build:
-      context: ./
-      args:
-        BUILD_ENV: local
-    volumes:
-      - .:/var/www
-      - ./xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini:ro
-    ports:
-      - "80:80"
-    environment:
-      - APP_ENV=local
+    app:
+        build:
+            context: ./src
+            dockerfile: ../Dockerfile
+            args:
+                BUILD_ENV: dev
+        volumes:
+            - ./src:/var/www/html
+            - ./xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini:ro
+        ports:
+            - "80:80"
+        environment:
+            - APP_ENV=local
