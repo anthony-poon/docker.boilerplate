@@ -1,22 +1,37 @@
+FROM ubuntu:latest as staging
+
+RUN apt-get update && apt-get install -y dos2unix
+WORKDIR /opt/workspace
+COPY ../configs/vhost-000-default.conf /opt/workspace/vhost-000-default.conf
+COPY ../configs/xdebug.ini /opt/workspace/xdebug.ini
+
+RUN dos2unix /opt/workspace/*
+
 FROM composer as build
 
 WORKDIR /opt/workspace
-COPY ./composer.json /opt/workspace
-COPY ./composer.lock /opt/workspace
-RUN composer install
+COPY ./src/composer.json /opt/workspace
+COPY ./src/composer.lock /opt/workspace
+RUN composer install --ignore-platform-reqs
 
 FROM php:7.4-apache
-ARG BUILD_ENV
-ENV APACHE_DOCUMENT_ROOT=/var/www/html/public_html
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# only install and activate xdebug on local docker build
-RUN if [ $BUILD_ENV = dev ] ; then pecl install -o -f xdebug &&  rm -rf tmppear; docker-php-ext-enable xdebug; fi
-# on local docker build use the development php.ini, otherwise use the production version of the image
-RUN if [ $BUILD_ENV = dev ] ; then mv $PHP_INI_DIR/php.ini-development $PHP_INI_DIR/php.ini;  else mv $PHP_INI_DIR/php.ini-production $PHP_INI_DIR/php.ini; fi
+RUN pecl install xdebug
+RUN docker-php-ext-enable xdebug
+RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
+
+RUN mkdir /tmp/staging
+## Overwritting default 000-default.conf
+COPY --from=staging /opt/workspace/vhost-000-default.conf /etc/apache2/sites-enabled/000-default.conf
+COPY --from=staging /opt/workspace/xdebug.ini /tmp/staging/xdebug.ini
+
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+RUN cat /tmp/staging/xdebug.ini >> "$PHP_INI_DIR/php.ini"
+RUN rm -rf /tmp/staging
+
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 RUN a2enmod rewrite
 
-WORKDIR /var/www/html/
-COPY --from=build /opt/workspace/vendor /var/www/html/vendor
-
+COPY --from=build /opt/workspace/vendor /var/www/vendor
+WORKDIR /var/www
+EXPOSE 80
