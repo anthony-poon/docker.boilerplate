@@ -1,8 +1,8 @@
 version: '3'
 services:
-    app:
+    web:
         build:
-            context: .
+            context: php
             dockerfile: ./Dockerfile
             args:
                 BUILD_ENV: dev
@@ -13,11 +13,27 @@ services:
             - "80:80"
         environment:
             - APP_ENV=local
-#
-#    mysql:
-#        image: mysql
-#        environment:
-#            MYSQL_DATABASE: docker
-#            MYSQL_USER: docker
-#            MYSQL_PASSWORD: password
-#            MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    sftp:
+        build:
+            context: sftp
+            dockerfile: ./Dockerfile
+        ports:
+            - "2222:22"
+
+    mysql:
+        image: mysql
+        environment:
+            MYSQL_DATABASE: docker
+            MYSQL_USER: docker
+            MYSQL_PASSWORD: password
+            MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+
+    message_queue:
+        build:
+            context: ./docker/message_queue
+        ports:
+            - "15672:15672"
+            - "5672:5672"
+
+volumes:
+    sftp-data:
