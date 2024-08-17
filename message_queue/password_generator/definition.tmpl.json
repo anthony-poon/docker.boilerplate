@@ -2,7 +2,7 @@
   "rabbit_version": "3.9",
   "users": [
     {
-      "name": "emsuser",
+      "name": "some-user",
       "password_hash": "$RABBITMQ_ADMIN_PASSWORD",
       "hashing_algorithm": "rabbit_password_hashing_sha256",
       "tags": "administrator"
@@ -10,13 +10,13 @@
   ],
   "vhosts": [
     {
-      "name": "\/contact-list-speed-test"
+      "name": "some-vhost"
     }
   ],
   "permissions": [
     {
-      "user": "emsuser",
-      "vhost": "\/contact-list-speed-test",
+      "user": "some-user",
+      "vhost": "contact-list-speed-test",
       "configure": ".*",
       "write": ".*",
       "read": ".*"

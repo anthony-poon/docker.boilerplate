@@ -8,7 +8,7 @@ RUN find /opt -type f -print0 | xargs -0 dos2unix
 RUN chmod u+x /opt/password_hash.sh
 RUN /opt/password_hash.sh /opt/definition.tmpl.json /opt/definition.json /opt/password.conf
 
-FROM rabbitmq:3.9-management
+FROM rabbitmq:3.13.3-management
 COPY --from=builder /opt/definition.json /etc/rabbitmq/definition.json
 COPY enabled_plugins /etc/rabbitmq/enabled_plugins
 COPY rabbitmq.conf /etc/rabbitmq/rabbitmq.conf
