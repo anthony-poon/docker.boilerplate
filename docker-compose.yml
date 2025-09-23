@@ -1,39 +1,53 @@
 version: '3'
 services:
-    web:
-        build:
-            context: php
-            dockerfile: ./Dockerfile
-            args:
-                BUILD_ENV: dev
-        volumes:
-            - ./src:/var/www/html
-            - ./logs:/var/log/apache2
-        ports:
-            - "80:80"
-        environment:
-            - APP_ENV=local
-    sftp:
-        build:
-            context: sftp
-            dockerfile: ./Dockerfile
-        ports:
-            - "2222:22"
+  app:
+    image: app
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
 
-    mysql:
-        image: mysql
-        environment:
-            MYSQL_DATABASE: docker
-            MYSQL_USER: docker
-            MYSQL_PASSWORD: password
-            MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/proxy/Dockerfile
+    ports:
+      - "${APP_PORT:-8080}:80"
 
-    message_queue:
-        build:
-            context: ./docker/message_queue
-        ports:
-            - "15672:15672"
-            - "5672:5672"
+  database:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./docker/database/init:/docker-entrypoint-initdb.d
+    profiles:
+      - "database"
+
+  amqp:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-}
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    profiles:
+      - "amqp"
+
+  sftp:
+    build:
+      context: .
+      dockerfile: docker/sftp/Dockerfile
+    ports:
+      - "22:22"
+    profiles:
+      - "sftp"
 
 volumes:
-    sftp-data:
+  sftp:
+  database:
