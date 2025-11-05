@@ -4,11 +4,10 @@ set -e
 # Project name = current folder name, sanitize invalid chars to "-"
 PROJECT_NAME=$(basename "$PWD" | sed 's/[^a-zA-Z0-9_-]/-/g')
 
-CMD="docker compose -p $PROJECT_NAME -f docker-compose.yml"
-
 # Parse args
 EXTRA_ARGS=""
 USE_DEV=false
+RUN_REBUILD=FALSE
 PROFILES=""
 
 print_help() {
@@ -41,13 +40,6 @@ while [ $# -gt 0 ]; do
       print_help
       exit 0
       ;;
-    start)
-      shift
-      if [ "${1:-}" = "dev" ]; then
-        USE_DEV=true
-        shift
-      fi
-      ;;
     --with)
       shift
       if [ -n "$1" ]; then
@@ -58,22 +50,36 @@ while [ $# -gt 0 ]; do
         shift
       fi
       ;;
+    --rebuild)
+      shift
+      RUN_REBUILD=true
+      ;;
     *)
-      EXTRA_ARGS="$EXTRA_ARGS $1"
+      if [ "${1:-}" = "dev" ]; then
+        USE_DEV=true
+      else
+        EXTRA_ARGS="$EXTRA_ARGS $1"
+      fi
       shift
       ;;
   esac
 done
 
+
+FILES="-f docker-compose.yml"
+
 # Add dev compose file if requested
 if [ "$USE_DEV" = true ]; then
-  CMD="$CMD -f docker-compose.dev.yml"
+  FILES="$FILES -f docker-compose.dev.yml"
 fi
 
 # If already running, bring it down
 if docker compose -p "$PROJECT_NAME" ps --status running | grep -q 'Up'; then
   echo "[$PROJECT_NAME] already running, stopping..."
-  $CMD down
+  docker compose down $FILES
 fi
 
-exec $CMD $PROFILES up --remove-orphans $EXTRA_ARGS
+if [ "$RUN_REBUILD" = true ]; then
+  docker compose $FILES build --no-cache
+fi
+exec docker compose -p $PROJECT_NAME $FILES $PROFILES up --remove-orphans $EXTRA_ARGS

@@ -1,5 +1,3 @@
-ARG BUILD_ENV=prod
-
 FROM composer as build
 
 WORKDIR /opt/workspace
@@ -8,6 +6,7 @@ COPY /src/composer.lock /opt/workspace
 RUN composer install --ignore-platform-reqs
 
 FROM php:8.4-fpm-alpine
+ARG BUILD_ENV=prod
 
 RUN apk add --no-cache \
     libpq \
